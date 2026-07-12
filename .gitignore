@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# nek2vtk outputs
+vtk/
+*.vtp
+*.vtu
+*.vtkhdf
+*.pvd
+
+# but keep example/reference config files if any are committed intentionally
+!examples/**/*.json
+
+# Nek data (large) - do not commit
+*.f0*
+*.re2
+*.ma2
+*.fld
+*.nek5000
