@@ -22,20 +22,23 @@ from . import geometry, nekfaces
 
 INTERIOR_CODES = {"", "E", "e"}
 
-# Codes that are generic placeholders written by mesh converters (e.g.
-# gmsh2nek writes "MSH" for every physical boundary and stores the real
-# sideset id in the 5th bc parameter).  For these we prefer the numeric id.
-GENERIC_CODES = {"MSH", "msh"}
+# Generic placeholder codes written by the Nek5000 mesh converters for every
+# (non-periodic) physical boundary, with the real sideset id stored in the 5th
+# bc parameter:  gmsh2nek -> 'MSH', exo2nek -> 'EXO', cgns2nek -> 'CGN'.
+# For these we prefer the numeric sideset id.  (Periodic faces are always
+# coded 'P' by all three converters, never the generic code.)
+GENERIC_CODES = {"MSH", "EXO", "CGN"}
 
 
 def _face_label(code: str, boundary_id: int) -> str:
     """Return the hint label for a boundary face.
 
-    Prefers a meaningful Nek code (``W``, ``v``, ``o``, ...).  When the code is a
-    generic converter placeholder (``MSH``) it falls back to the numeric
-    boundary id (``bc3``) that gmsh2nek / exo2nek store in the bc parameters.
+    Prefers a meaningful Nek code (``W``, ``v``, ``o``, ``P``, ...).  When the
+    code is a generic converter placeholder (``MSH``/``EXO``/``CGN``) it falls
+    back to the numeric sideset id (``bc3``) stored in the 5th bc parameter by
+    gmsh2nek / exo2nek / cgns2nek.
     """
-    if code in GENERIC_CODES and boundary_id > 0:
+    if code.upper() in GENERIC_CODES and boundary_id > 0:
         return f"bc{boundary_id}"
     return code
 

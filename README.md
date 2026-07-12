@@ -44,9 +44,13 @@ unreliable identity by NekRS.
 - The `.re2` boundary **codes / sideset ids** are used as *labels*, matched to
   each field face by position **and** orientation (so a periodic face near a
   wall matches the periodic patch, not the closer wall). For meshes from
-  `genbox` the label is the Nek code (`W`, `v`, `o`, `P`); for `gmsh2nek` /
-  `exo2nek`, which write the generic code `MSH` and store the real sideset
-  number in the bc parameters, the label is that number (`bc1`, `bc2`, …).
+  `genbox` the label is the Nek code (`W`, `v`, `o`, `P`). The mesh converters
+  `gmsh2nek`, `exo2nek` and `cgns2nek` instead write a generic code
+  (`MSH` / `EXO` / `CGN`) for every physical boundary and store the real
+  sideset number in the 5th bc parameter — nek2vtk detects these and uses that
+  number as the label (`bc1`, `bc2`, …). All three converters code periodic
+  faces as `P` (never the generic code), so periodic planes are labelled `P`
+  and separated geometrically.
 - By default each geometric region is then **sub-split by label**, so distinct
   sidesets that are geometrically connected (e.g. several far-field patches of a
   C-mesh meeting at shallow angles) are kept separate — while a handful of
