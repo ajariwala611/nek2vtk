@@ -61,28 +61,20 @@ unreliable identity by NekRS.
 
 ## Installation
 
-Requires Python ≥ 3.9.
-
-**1. Install `pysemtools` first.** It is used to read the Nek field files (in
-parallel) and write the VTKHDF volume, but it is **not on PyPI**, so it must be
-installed on its own:
+Requires Python ≥ 3.9. From the repository root:
 
 ```bash
-pip install git+https://github.com/ExtremeFLOW/pysemtools.git
-```
-
-(If `pysemtools` is already importable in your environment — e.g. in your conda
-env — you can skip this.)
-
-**2. Install nek2vtk** from the repository root:
-
-```bash
+git clone https://github.com/ajariwala611/nek2vtk.git
+cd nek2vtk
 pip install -e .
 ```
 
-This pulls the remaining dependencies (`numpy`, `scipy`, `pymech`, `pyvista`,
-`mpi4py`, `h5py`) and installs the `nek2vtk` command. You can also run it
-without installing, via `python -m nek2vtk.cli`.
+This installs the `nek2vtk` command and its dependencies — `numpy`, `scipy`,
+[`pymech`](https://github.com/eX-Mech/pymech),
+[`pyvista`](https://pyvista.org), `mpi4py`, `h5py`, and
+[`extremeflow-pysemtools`](https://github.com/ExtremeFLOW/pySEMTools) (the
+package name for pySEMTools on PyPI, imported as `pysemtools`). You can also run
+the tool without installing, via `python -m nek2vtk.cli`.
 
 > **Parallel volume writes** need an MPI-enabled build of `h5py` (parallel
 > HDF5). If you don't have one, `nek2vtk` still runs in parallel — it just
