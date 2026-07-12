@@ -17,6 +17,14 @@ def _find_default_casefile(cwd: Path) -> Path | None:
     return None
 
 
+def _find_default_re2(cwd: Path) -> Path | None:
+    """Find a single ``.re2`` file in ``cwd``, else None."""
+    candidates = sorted(cwd.glob("*.re2"))
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="nek2vtk",
@@ -38,6 +46,15 @@ def build_parser() -> argparse.ArgumentParser:
         "-o", "--outdir", default=None,
         help="Output directory (default: <casedir>/vtk).",
     )
+    p.add_argument("--mesh-only", action="store_true",
+                   help="Export the mesh from the .re2 alone (no field files, no "
+                        "solution): a tagged boundary .vtp (cell arrays "
+                        "'sidesetID' + 'region') and the linear-hex volume .vtu. "
+                        "Fast; for checking a BC setup. Geometry is linear (the "
+                        ".re2 has no GLL nodes).")
+    p.add_argument("--no-volume-vtu", action="store_true",
+                   help="With --mesh-only, skip the linear-hex volume .vtu and "
+                        "write only the tagged boundary .vtp.")
     p.add_argument("--volume", action="store_true",
                    help="Also export the full volume as VTKHDF (off by default; "
                         "the file is several times larger than the Nek .f data).")
@@ -69,6 +86,44 @@ def main(argv=None) -> int:
     size = comm.Get_size()
 
     args = build_parser().parse_args(argv)
+
+    # ---- mesh-only: read the .re2 alone (serial, rank 0) ------------------
+    if args.mesh_only:
+        if rank != 0:
+            return 0  # serial task; other ranks idle
+        from .mesh_export import export_mesh
+
+        if args.re2:
+            re2file = Path(args.re2).expanduser().resolve()
+        elif args.case:
+            re2file = (Path(args.case).expanduser().resolve()
+                       .with_suffix(".re2"))
+        else:
+            found = _find_default_casefile(Path.cwd())
+            if found is not None:
+                re2file = found.resolve().with_suffix(".re2")
+            else:
+                found = _find_default_re2(Path.cwd())
+                if found is None:
+                    print("error: --mesh-only needs a .re2 — pass --re2 PATH, a "
+                          "case file, or run where a unique *.re2 exists.",
+                          file=sys.stderr)
+                    return 2
+                re2file = found.resolve()
+        if not re2file.is_file():
+            print(f"error: re2 file not found: {re2file}", file=sys.stderr)
+            return 2
+        casename = re2file.stem
+        outdir = (Path(args.outdir).expanduser().resolve()
+                  if args.outdir else re2file.parent / "vtk")
+        try:
+            export_mesh(re2file, outdir, casename,
+                        normal_angle_deg=args.normal_angle,
+                        write_volume=not args.no_volume_vtu)
+        except Exception as exc:  # noqa: BLE001
+            print(f"\nERROR: {exc}", file=sys.stderr, flush=True)
+            return 1
+        return 0
 
     # Resolve the case file (rank 0 decides, then everyone re-derives paths).
     if args.case is not None:

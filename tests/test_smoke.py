@@ -96,6 +96,24 @@ def test_face_labels_all_converters():
     assert _face_label("W", 0) == "W"       # genbox code kept
 
 
+def test_mesh_export_helpers():
+    """Point de-dup merges coincident corners; VTK hex order has 8 nodes."""
+    from nek2vtk.mesh_export import _VTK_HEX, _dedup
+
+    assert len(_VTK_HEX) == 8
+    # two quads sharing an edge -> 6 unique points, connectivity remapped
+    pts = np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],   # quad A
+        [1, 0, 0], [2, 0, 0], [2, 1, 0], [1, 1, 0],   # quad B (shares 2 pts)
+    ], float)
+    upts, inv = _dedup(pts)
+    assert upts.shape[0] == 6
+    assert inv.shape[0] == 8
+    # the shared corners map to the same unique index
+    assert inv[1] == inv[4]  # (1,0,0)
+    assert inv[2] == inv[7]  # (1,1,0)
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

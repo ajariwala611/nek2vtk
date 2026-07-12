@@ -148,6 +148,9 @@ nek2vtk [CASE.nek5000] [options]
   --re2 PATH          Mesh file (default: <casename>.re2 beside the case file)
   -o, --outdir DIR    Output directory (default: <casedir>/vtk)
 
+  --mesh-only         Export the mesh from the .re2 alone (no field files, no
+                      solution) — see "Mesh-only export" below
+  --no-volume-vtu     With --mesh-only, skip the volume .vtu (boundary .vtp only)
   --volume            Also export the full volume as VTKHDF (off by default;
                       the file is several times larger than the Nek .f data)
   --no-boundaries     Skip the per-boundary VTP export
@@ -160,6 +163,39 @@ nek2vtk [CASE.nek5000] [options]
   --dtype {single,double}   Output precision (default: single)
   --max-files N       Only convert the first N timesteps (handy for testing)
 ```
+
+---
+
+## Mesh-only export (no solution data)
+
+To inspect a mesh / check a boundary-condition setup **without** any field data
+— and without even needing a field file — use `--mesh-only`:
+
+```bash
+nek2vtk --mesh-only --re2 case.re2         # or: nek2vtk case.nek5000 --mesh-only
+```
+
+It reads only the `.re2` and writes, into `vtk/`:
+
+- **`<case>_re2_boundaries.vtp`** — every boundary face as a quad, with two
+  integer cell arrays:
+  - **`sidesetID`** — the raw gmsh2nek/exo2nek/cgns2nek sideset number (`0` for
+    `genbox` meshes, which have none);
+  - **`region`** — nek2vtk's connectivity+normal auto-split (1-based), which
+    also separates boundaries on `genbox` meshes that have no numeric id.
+
+  In ParaView, apply **Threshold** (or *Extract Cells By Region*) on either
+  array to isolate any boundary. Thresholding on `sidesetID` gives you exactly
+  the sidesets you defined in your mesher.
+- **`<case>_re2_volume.vtu`** — the full linear hexahedral element mesh, with an
+  `elementID` cell array. (Skip it with `--no-volume-vtu`.)
+
+This is serial, fast, and needs only pymech + pyvista (no pysemtools, no MPI).
+
+> **Note:** the `.re2` stores only *linear* element geometry (8 corners per hex)
+> as it was handed to the solver, so this mesh is straight-edged and reflects
+> the mesh **before** any run-time `usrdat` deformation. For the deformed,
+> as-simulated geometry (and field data), use the normal field-file conversion.
 
 ---
 
@@ -232,6 +268,7 @@ nek2vtk/
 ├── regions.py      connected-component splitter + region summaries
 ├── naming.py       interactive naming + JSON config load/save
 ├── surface.py      face tessellation -> merged .vtp per region
+├── mesh_export.py  re2-only export: tagged boundary .vtp + volume .vtu
 ├── volume.py       full volume -> .vtkhdf (via pysemtools)
 ├── pvd.py          ParaView .pvd time-series writer
 ├── convert.py      end-to-end driver
