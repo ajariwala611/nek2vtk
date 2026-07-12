@@ -38,8 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
         "-o", "--outdir", default=None,
         help="Output directory (default: <casedir>/vtk).",
     )
-    p.add_argument("--no-volume", action="store_true",
-                   help="Skip the full-volume VTKHDF export.")
+    p.add_argument("--volume", action="store_true",
+                   help="Also export the full volume as VTKHDF (off by default; "
+                        "the file is several times larger than the Nek .f data).")
     p.add_argument("--no-boundaries", action="store_true",
                    help="Skip the per-boundary VTP export.")
     p.add_argument("--normal-angle", type=float, default=40.0,
@@ -99,7 +100,7 @@ def main(argv=None) -> int:
         casefile=casefile,
         re2file=re2file,
         outdir=outdir,
-        write_volume=not args.no_volume,
+        write_volume=args.volume,
         write_boundaries=not args.no_boundaries,
         normal_angle_deg=args.normal_angle,
         split_by_sideset=not args.no_sideset_split,

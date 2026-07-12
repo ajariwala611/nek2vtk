@@ -25,7 +25,7 @@ class Config:
     casefile: Path
     re2file: Path
     outdir: Path
-    write_volume: bool = True
+    write_volume: bool = False
     write_boundaries: bool = True
     normal_angle_deg: float = 40.0
     split_by_sideset: bool = True

@@ -13,8 +13,9 @@ for a no-slip wall), which is fiddly and imprecise. `nek2vtk`:
 3. checks the element count in the mesh and field files match,
 4. **detects each physical boundary directly from the field geometry** and lets
    you **name** them (inlet, outlet, wall, …),
-5. writes **one `.vtp` surface per boundary** (carrying all the field data) plus
-   the **full volume as `.vtkhdf`**, with `.pvd` time-series files for each.
+5. writes **one `.vtp` surface per boundary** (carrying all the field data),
+   with a `.pvd` time series for each — and, optionally (`--volume`), the
+   **full volume as `.vtkhdf`**.
 
 So instead of contouring, you just open `flat_plate_wall.pvd` and you have the
 wall — with `u`, `v`, `w`, `p`, `velocity`, `velocity_magnitude` on it — for the
@@ -117,16 +118,16 @@ rename, then re-run.
 
 ```
 vtk/
-├── flat_plate_volume.pvd                  # volume time series
 ├── flat_plate_wall.pvd                    # one .pvd per boundary
 ├── flat_plate_inlet.pvd
 ├── ...
-├── volume/
-│   └── flat_plate_volume_00001.vtkhdf     # one per timestep
-└── boundaries/
-    ├── wall/  flat_plate_wall_00001.vtp
-    ├── inlet/ flat_plate_inlet_00001.vtp
-    └── ...
+├── flat_plate_volume.pvd                  # only with --volume
+├── boundaries/
+│   ├── wall/  flat_plate_wall_00001.vtp
+│   ├── inlet/ flat_plate_inlet_00001.vtp
+│   └── ...
+└── volume/                                # only with --volume
+    └── flat_plate_volume_00001.vtkhdf     # one per timestep
 ```
 
 In ParaView, open any `.pvd` to load that surface (or the volume) as an
@@ -143,7 +144,8 @@ nek2vtk [CASE.nek5000] [options]
   --re2 PATH          Mesh file (default: <casename>.re2 beside the case file)
   -o, --outdir DIR    Output directory (default: <casedir>/vtk)
 
-  --no-volume         Skip the full-volume VTKHDF export
+  --volume            Also export the full volume as VTKHDF (off by default;
+                      the file is several times larger than the Nek .f data)
   --no-boundaries     Skip the per-boundary VTP export
   --normal-angle DEG  Max angle between adjacent face normals to merge them into
                       one region (default: 40). Lower = split more aggressively.
@@ -170,10 +172,10 @@ mpiexec -n 8 nek2vtk flat_plate.nek5000 --non-interactive
   job, which reuses it. (Or edit the JSON by hand.)
 - The **boundary VTPs are extracted in parallel** and gathered to the root rank
   to write one clean, de-duplicated `.vtp` per boundary.
-- The **volume** is written in parallel only if your `h5py` has MPI support;
-  otherwise it is gathered to the root rank and written there. For very large
-  meshes, either install an MPI-enabled `h5py`, or pass `--no-volume` and export
-  only the boundaries in parallel.
+- The **volume** (only with `--volume`) is written in parallel if your `h5py`
+  has MPI support; otherwise it is gathered to the root rank and written there.
+  For very large meshes, install an MPI-enabled `h5py`, or just leave the volume
+  off (the default) and export only the boundaries in parallel.
 
 > Use your MPI launcher that matches the `mpi4py` you installed (e.g. the one in
 > your conda env), not an unrelated `mpiexec` from another application.
