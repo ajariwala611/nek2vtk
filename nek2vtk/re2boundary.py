@@ -48,12 +48,46 @@ class Re2Boundaries:
     centers: np.ndarray   # (Nf, 3) boundary-face centres
     normals: np.ndarray   # (Nf, 3) outward unit normals
     codes: np.ndarray     # (Nf,) boundary labels (code or bc<id>)
-    nelgt: int
+    nelgt: int            # total elements (fluid + solid)
+    nelgv: int            # fluid (velocity) elements
     ndim: int
 
     @property
     def nfaces(self) -> int:
         return len(self.codes)
+
+    @property
+    def is_cht(self) -> bool:
+        """True if the mesh has solid elements (conjugate heat transfer)."""
+        return self.nelgv < self.nelgt
+
+
+def read_re2_header(path: str | Path):
+    """Parse the 80-byte ``.re2`` ASCII header.
+
+    Returns ``(nelgt, ndim, nelgv)``.  The header looks like
+    ``#v004    96576  3    96576   1 hdr ...`` — version token, then the total
+    element count, the dimension, and the number of fluid (velocity) elements.
+    For a conjugate-heat-transfer mesh ``nelgv < nelgt`` (the remainder are
+    solid elements).
+    """
+    path = Path(path)
+    with open(path, "rb") as fh:
+        hdr = fh.read(80).decode("ascii", errors="replace")
+    tokens = hdr.split()
+    # tokens[0] is the version marker (e.g. '#v004'); the ints follow.
+    ints = []
+    for t in tokens[1:]:
+        try:
+            ints.append(int(t))
+        except ValueError:
+            break
+    if len(ints) < 2:
+        raise ValueError(f"{path}: could not parse .re2 header: {hdr!r}")
+    nelgt = ints[0]
+    ndim = ints[1]
+    nelgv = ints[2] if len(ints) >= 3 else nelgt
+    return nelgt, ndim, nelgv
 
 
 def read_re2_boundaries(path: str | Path) -> Re2Boundaries:
@@ -63,6 +97,8 @@ def read_re2_boundaries(path: str | Path) -> Re2Boundaries:
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"re2 file not found: {path}")
+
+    nelgt_hdr, _, nelgv_hdr = read_re2_header(path)
 
     mesh = readre2(str(path))
     ndim = int(mesh.ndim)
@@ -110,5 +146,6 @@ def read_re2_boundaries(path: str | Path) -> Re2Boundaries:
         normals=normals,
         codes=np.asarray(codes, dtype="<U8"),
         nelgt=nel,
+        nelgv=int(nelgv_hdr),
         ndim=ndim,
     )

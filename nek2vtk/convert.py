@@ -82,6 +82,16 @@ def run(config: Config, comm) -> None:
         re2b = read_re2_boundaries(config.re2file)
         print(f"  {re2b.nfaces} boundary faces, {re2b.nelgt} elements in mesh.",
               flush=True)
+        if re2b.is_cht:
+            raise NotImplementedError(
+                f"{config.re2file.name} is a conjugate-heat-transfer mesh "
+                f"({re2b.nelgv} fluid + {re2b.nelgt - re2b.nelgv} solid of "
+                f"{re2b.nelgt} elements). nek2vtk does not support CHT / "
+                "fluid+solid meshes yet (it reads only the fluid boundary "
+                "section and the field/mesh element counts won't line up). "
+                "Please open an issue at "
+                "https://github.com/ajariwala611/nek2vtk/issues if you need this."
+            )
         payload = {
             "field_files": [str(f) for f in field_files],
             "casename": case.casename,

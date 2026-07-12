@@ -64,6 +64,38 @@ def test_split_two_coplanar_quads_merge():
     assert len(infos) == 1 and infos[0].code == "W" and infos[0].nfaces == 2
 
 
+def test_re2_header_parse_and_cht(tmp_path=None):
+    """Header parser reads nelgt/ndim/nelgv; CHT is when nelgv < nelgt."""
+    import tempfile
+    from nek2vtk.re2boundary import read_re2_header
+
+    def _write(hdr_text):
+        raw = hdr_text.encode("ascii")
+        raw = raw.ljust(80)[:80]
+        f = tempfile.NamedTemporaryFile(suffix=".re2", delete=False)
+        f.write(raw)
+        f.close()
+        return f.name
+
+    # pure fluid
+    p = _write("#v004    40000  3    40000   1 hdr")
+    assert read_re2_header(p) == (40000, 3, 40000)
+    # conjugate heat transfer: fewer fluid than total
+    p = _write("#v004     1000  3      600   1 hdr")
+    nelgt, ndim, nelgv = read_re2_header(p)
+    assert (nelgt, ndim, nelgv) == (1000, 3, 600)
+    assert nelgv < nelgt  # -> is_cht
+
+
+def test_face_labels_all_converters():
+    from nek2vtk.re2boundary import _face_label
+    assert _face_label("MSH", 3) == "bc3"   # gmsh2nek
+    assert _face_label("EXO", 2) == "bc2"   # exo2nek
+    assert _face_label("CGN", 5) == "bc5"   # cgns2nek
+    assert _face_label("P", 6) == "P"       # periodic stays P
+    assert _face_label("W", 0) == "W"       # genbox code kept
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

@@ -220,6 +220,11 @@ order `N` becomes `N³` linear hexahedra in the `.vtkhdf` file.
   indistinguishable). Split them afterwards in ParaView if needed.
 - Periodic faces (`P`) are real mesh boundaries and are exported like any other
   boundary; ignore or delete the ones you don't want.
+- **Conjugate heat transfer (CHT) is not supported yet.** Meshes with solid
+  elements (where `nelgv < nelgt` in the `.re2` header) are detected and
+  rejected with a clear message rather than producing wrong output. Tested only
+  on isothermal incompressible cases so far — temperature/scalar BCs and
+  moving/ALE meshes are largely unexercised; feedback welcome.
 
 ---
 
