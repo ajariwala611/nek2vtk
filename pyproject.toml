@@ -19,8 +19,12 @@ dependencies = [
     "pyvista>=0.40",
     "mpi4py>=3.1",
     "h5py>=3.0",
-    "pysemtools",
 ]
+
+# pysemtools is required at runtime but is not distributed on PyPI, so it is
+# not listed above (pip cannot resolve it). Install it separately, e.g.:
+#   pip install git+https://github.com/ExtremeFLOW/pysemtools.git
+# See the README "Installation" section.
 
 [project.scripts]
 nek2vtk = "nek2vtk.cli:main"

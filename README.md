@@ -57,20 +57,28 @@ unreliable identity by NekRS.
 
 ## Installation
 
-Requires Python ≥ 3.9 and these packages (all pip/conda-installable):
+Requires Python ≥ 3.9.
 
-```
-numpy  scipy  pymech  pyvista  mpi4py  h5py  pysemtools
+**1. Install `pysemtools` first.** It is used to read the Nek field files (in
+parallel) and write the VTKHDF volume, but it is **not on PyPI**, so it must be
+installed on its own:
+
+```bash
+pip install git+https://github.com/ExtremeFLOW/pysemtools.git
 ```
 
-Then, from the repository root:
+(If `pysemtools` is already importable in your environment — e.g. in your conda
+env — you can skip this.)
+
+**2. Install nek2vtk** from the repository root:
 
 ```bash
 pip install -e .
 ```
 
-This installs the `nek2vtk` command. (You can also run it without installing via
-`python -m nek2vtk.cli`.)
+This pulls the remaining dependencies (`numpy`, `scipy`, `pymech`, `pyvista`,
+`mpi4py`, `h5py`) and installs the `nek2vtk` command. You can also run it
+without installing, via `python -m nek2vtk.cli`.
 
 > **Parallel volume writes** need an MPI-enabled build of `h5py` (parallel
 > HDF5). If you don't have one, `nek2vtk` still runs in parallel — it just
