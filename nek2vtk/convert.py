@@ -28,6 +28,7 @@ class Config:
     write_volume: bool = True
     write_boundaries: bool = True
     normal_angle_deg: float = 40.0
+    split_by_sideset: bool = True
     interactive: bool = True
     reconfigure: bool = False
     dtype: str = "single"          # 'single' or 'double'
@@ -88,10 +89,12 @@ def run(config: Config, comm) -> None:
             "nelgt": re2b.nelgt,
         }
         re2_centers = re2b.centers
+        re2_normals = re2b.normals
         re2_codes = re2b.codes
     else:
         payload = None
         re2_centers = None
+        re2_normals = None
         re2_codes = None
 
     payload = comm.bcast(payload, root=0)
@@ -160,8 +163,10 @@ def run(config: Config, comm) -> None:
             plan = boundary.detect_boundaries(
                 comm, coords,
                 re2_centers if rank == 0 else None,
+                re2_normals if rank == 0 else None,
                 re2_codes if rank == 0 else None,
                 normal_angle_deg=config.normal_angle_deg,
+                split_by_sideset=config.split_by_sideset,
             )
             surf_entries = {r: [] for r in range(plan.nreg)}
             if rank == 0:

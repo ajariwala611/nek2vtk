@@ -45,6 +45,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--normal-angle", type=float, default=40.0,
                    help="Max angle (deg) between adjacent face normals for them "
                         "to be joined into one boundary region (default: 40).")
+    p.add_argument("--no-sideset-split", action="store_true",
+                   help="Do not sub-split geometric regions by .re2 sideset/code "
+                        "label. Use for a purely geometric split (fewer regions).")
     p.add_argument("--non-interactive", action="store_true",
                    help="Do not prompt for boundary names; use saved config or "
                         "auto-generated defaults. (Forced under MPI with >1 rank.)")
@@ -99,6 +102,7 @@ def main(argv=None) -> int:
         write_volume=not args.no_volume,
         write_boundaries=not args.no_boundaries,
         normal_angle_deg=args.normal_angle,
+        split_by_sideset=not args.no_sideset_split,
         interactive=interactive,
         reconfigure=args.reconfigure,
         dtype=args.dtype,

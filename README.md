@@ -40,9 +40,17 @@ unreliable identity by NekRS.
   outward-normal angle test. This separates, e.g., an outlet and a freestream
   top that share the Nek code `o` but meet at a sharp edge, while keeping a
   smoothly curved wall (an airfoil) as one surface.
-- The `.re2` boundary **codes** (`W`, `v`, `o`, `P`, …) are used only as *naming
-  hints*, matched by location and reduced to one code per region by majority
-  vote. You get the final say when naming.
+- The `.re2` boundary **codes / sideset ids** are used as *labels*, matched to
+  each field face by position **and** orientation (so a periodic face near a
+  wall matches the periodic patch, not the closer wall). For meshes from
+  `genbox` the label is the Nek code (`W`, `v`, `o`, `P`); for `gmsh2nek` /
+  `exo2nek`, which write the generic code `MSH` and store the real sideset
+  number in the bc parameters, the label is that number (`bc1`, `bc2`, …).
+- By default each geometric region is then **sub-split by label**, so distinct
+  sidesets that are geometrically connected (e.g. several far-field patches of a
+  C-mesh meeting at shallow angles) are kept separate — while a handful of
+  stray label mis-matches are folded into the region majority so they can't
+  fragment a boundary. Pass `--no-sideset-split` for a purely geometric split.
 
 ---
 
@@ -139,6 +147,8 @@ nek2vtk [CASE.nek5000] [options]
   --no-boundaries     Skip the per-boundary VTP export
   --normal-angle DEG  Max angle between adjacent face normals to merge them into
                       one region (default: 40). Lower = split more aggressively.
+  --no-sideset-split  Purely geometric split; do not sub-split regions by the
+                      .re2 sideset/code label (gives fewer, merged regions)
   --non-interactive   Don't prompt; use the saved config or auto defaults
   --reconfigure       Ignore an existing name config and rebuild it
   --dtype {single,double}   Output precision (default: single)

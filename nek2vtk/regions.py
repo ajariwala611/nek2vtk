@@ -106,6 +106,52 @@ def split_faces(corners: np.ndarray, normal: np.ndarray,
     return region
 
 
+def sub_split_by_label(geo_region: np.ndarray, labels: np.ndarray,
+                       centroid: np.ndarray, min_faces: int = 20,
+                       min_frac: float = 0.02) -> np.ndarray:
+    """Refine geometric regions by boundary label (sideset).
+
+    Within each geometric region, faces are separated by their boundary label
+    so that distinct sidesets that happen to be geometrically connected (e.g.
+    several far-field patches meeting at shallow angles) become separate
+    regions.  A label that covers fewer than ``max(min_faces, min_frac*N)`` of
+    the region's faces is treated as a stray mis-match and folded into the
+    region's majority label, so a handful of bad code hints cannot fragment a
+    boundary.
+
+    Returns a new region-id array, renumbered deterministically.
+    """
+    n = geo_region.size
+    if n == 0:
+        return geo_region.copy()
+
+    adj = labels.copy()
+    for g in np.unique(geo_region):
+        mask = geo_region == g
+        labs = labels[mask]
+        vals, counts = np.unique(labs, return_counts=True)
+        majority = vals[int(counts.argmax())]
+        thr = max(min_faces, int(min_frac * mask.sum()))
+        keep = set(vals[counts >= thr].tolist())
+        new = np.where(np.isin(labs, list(keep)) if keep else False, labs, majority)
+        adj[mask] = new
+
+    # Final regions = unique (geo_region, adjusted-label) combinations.
+    combo = {}
+    for g, l in zip(geo_region.tolist(), adj.tolist()):
+        combo.setdefault((g, l), 0)
+    summaries = []
+    for (g, l) in combo:
+        m = (geo_region == g) & (adj == l)
+        summaries.append(((g, l), int(m.sum()), tuple(np.round(centroid[m].mean(axis=0), 6))))
+    summaries.sort(key=lambda s: (-s[1], s[2]))
+
+    out = np.full(n, -1, dtype=np.int64)
+    for new_id, ((g, l), *_rest) in enumerate(summaries):
+        out[(geo_region == g) & (adj == l)] = new_id
+    return out
+
+
 @dataclass
 class RegionInfo:
     """Human-facing summary of one boundary region."""

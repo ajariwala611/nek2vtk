@@ -24,7 +24,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from . import geometry, nekfaces
-from .regions import RegionInfo, region_infos, split_faces
+from .regions import RegionInfo, region_infos, split_faces, sub_split_by_label
 
 
 @dataclass
@@ -45,13 +45,18 @@ def detect_boundaries(
     comm,
     coords: List[np.ndarray],
     re2_centers: Optional[np.ndarray],
+    re2_normals: Optional[np.ndarray],
     re2_codes: Optional[np.ndarray],
     normal_angle_deg: float = 40.0,
+    split_by_sideset: bool = True,
     round_decimals: int = 7,
 ) -> BoundaryPlan:
     """Detect boundary faces from field geometry and assign them to regions.
 
-    ``re2_centers`` / ``re2_codes`` are only needed on the root rank.
+    ``re2_centers`` / ``re2_normals`` / ``re2_codes`` are only needed on the
+    root rank.  When ``split_by_sideset`` is true, geometric regions are further
+    separated by matched ``.re2`` sideset label (see
+    :func:`regions.sub_split_by_label`).
     """
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -119,20 +124,31 @@ def detect_boundaries(
         b_faceid = FID[true]
         b_rank = RK[true]
 
-        # Assign codes from the nearest .re2 boundary face (naming hint).
+        # Assign codes/sidesets from the nearest .re2 boundary face, matched in
+        # a position+orientation space so that, e.g., a periodic face near a
+        # wall matches the periodic patch (same normal) rather than the closer
+        # wall face.
         if re2_centers is not None and len(re2_centers) > 0:
             from scipy.spatial import cKDTree
 
-            tree = cKDTree(re2_centers)
-            dist, idx = tree.query(b_center)
-            code = np.asarray(re2_codes)[idx].astype("<U3")
-            md = float(np.median(dist)) if dist.size else 0.0
-            mx = float(dist.max()) if dist.size else 0.0
+            span = float(np.linalg.norm(b_center.max(0) - b_center.min(0)))
+            w = 10.0 * max(span, 1e-30)  # weight so normal dominates ties
+            re2_feat = np.hstack([re2_centers, w * np.asarray(re2_normals)])
+            b_feat = np.hstack([b_center, w * b_normal])
+            tree = cKDTree(re2_feat)
+            _, idx = tree.query(b_feat)
+            code = np.asarray(re2_codes)[idx].astype("<U8")
+            # report positional match quality only
+            pdist = np.linalg.norm(b_center - re2_centers[idx], axis=1)
+            md = float(np.median(pdist)) if pdist.size else 0.0
+            mx = float(pdist.max()) if pdist.size else 0.0
         else:
-            code = np.full(len(b_center), "bc", dtype="<U3")
+            code = np.full(len(b_center), "bc", dtype="<U8")
             md = mx = 0.0
 
         region = split_faces(b_corners, b_normal, normal_angle_deg)
+        if split_by_sideset and re2_centers is not None and len(re2_centers) > 0:
+            region = sub_split_by_label(region, code, b_corners.mean(axis=1))
         infos = region_infos(b_corners, b_normal, region, codes=code)
         nreg = len(infos)
 
