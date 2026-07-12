@@ -175,22 +175,29 @@ To inspect a mesh / check a boundary-condition setup **without** any field data
 nek2vtk --mesh-only --re2 case.re2         # or: nek2vtk case.nek5000 --mesh-only
 ```
 
-It reads only the `.re2` and writes, into `vtk/`:
+It reads only the `.re2` and writes one **named multiblock** into `vtk/`:
 
-- **`<case>_re2_boundaries.vtp`** — every boundary face as a quad, with two
-  integer cell arrays:
-  - **`sidesetID`** — the raw gmsh2nek/exo2nek/cgns2nek sideset number (`0` for
-    `genbox` meshes, which have none);
-  - **`region`** — nek2vtk's connectivity+normal auto-split (1-based), which
-    also separates boundaries on `genbox` meshes that have no numeric id.
+```
+<case>_re2_mesh.vtm          (+ a <case>_re2_mesh/ folder with the pieces)
+├── volume                   the whole domain — linear hexes, with elementID
+└── boundaries
+    ├── inlet                one named block per boundary
+    ├── wall
+    ├── outlet
+    └── …
+```
 
-  In ParaView, apply **Threshold** (or *Extract Cells By Region*) on either
-  array to isolate any boundary. Thresholding on `sidesetID` gives you exactly
-  the sidesets you defined in your mesher.
-- **`<case>_re2_volume.vtu`** — the full linear hexahedral element mesh, with an
-  `elementID` cell array. (Skip it with `--no-volume-vtu`.)
+Open the `.vtm` in ParaView and its pipeline shows `volume` and each **named**
+boundary block — toggle or color any of them directly, no thresholding needed.
+Boundary blocks are grouped by the mesher's **sidesetID** when the mesh has
+numeric sidesets (gmsh2nek/exo2nek/cgns2nek), so each sideset becomes its own
+block; for `genbox` meshes (no numeric ids) they're grouped by the
+connectivity+normal auto-split. Each block also keeps a `sidesetID` cell array.
+Names are prompted once (or taken from `<case>_re2_names.json`), exactly like
+the main tool. Use `--no-volume-vtu` to drop the `volume` block.
 
 This is serial, fast, and needs only pymech + pyvista (no pysemtools, no MPI).
+(Keep the `.vtm` and its companion folder together when moving the output.)
 
 > **Note:** the `.re2` stores only *linear* element geometry (8 corners per hex)
 > as it was handed to the solver, so this mesh is straight-edged and reflects

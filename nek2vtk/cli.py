@@ -48,13 +48,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--mesh-only", action="store_true",
                    help="Export the mesh from the .re2 alone (no field files, no "
-                        "solution): a tagged boundary .vtp (cell arrays "
-                        "'sidesetID' + 'region') and the linear-hex volume .vtu. "
-                        "Fast; for checking a BC setup. Geometry is linear (the "
-                        ".re2 has no GLL nodes).")
+                        "solution): a named multiblock .vtm with a 'volume' block "
+                        "and named boundary blocks. Fast; for checking a BC setup. "
+                        "Geometry is linear (the .re2 has no GLL nodes).")
     p.add_argument("--no-volume-vtu", action="store_true",
-                   help="With --mesh-only, skip the linear-hex volume .vtu and "
-                        "write only the tagged boundary .vtp.")
+                   help="With --mesh-only, omit the 'volume' block (write only "
+                        "the named boundary blocks).")
     p.add_argument("--volume", action="store_true",
                    help="Also export the full volume as VTKHDF (off by default; "
                         "the file is several times larger than the Nek .f data).")
@@ -116,10 +115,13 @@ def main(argv=None) -> int:
         casename = re2file.stem
         outdir = (Path(args.outdir).expanduser().resolve()
                   if args.outdir else re2file.parent / "vtk")
+        mo_interactive = (not args.non_interactive) and sys.stdin.isatty()
         try:
             export_mesh(re2file, outdir, casename,
                         normal_angle_deg=args.normal_angle,
-                        write_volume=not args.no_volume_vtu)
+                        write_volume=not args.no_volume_vtu,
+                        interactive=mo_interactive,
+                        reconfigure=args.reconfigure)
         except Exception as exc:  # noqa: BLE001
             print(f"\nERROR: {exc}", file=sys.stderr, flush=True)
             return 1

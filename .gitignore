@@ -18,6 +18,7 @@ vtk/
 *.vtp
 *.vtu
 *.vtkhdf
+*.vtm
 *.pvd
 
 # but keep example/reference config files if any are committed intentionally
